@@ -4,7 +4,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 */
 package main
 
-import "logdna/pkg/cmd"
+import "logdna/cmd"
 
 func main() {
 	cmd.Execute()

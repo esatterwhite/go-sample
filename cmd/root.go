@@ -8,9 +8,11 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 import (
 	"fmt"
 	"io"
+	"logdna/logging"
 	"net/http"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -18,6 +20,8 @@ import (
 )
 
 var cfgFile string
+var token string
+var logger logging.Logger
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -51,41 +55,59 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
+	initConfig(rootCmd)
+	logger = logging.New("debug", "logdna")
+
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
+	logger.Debug().Msg("This is a test")
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/logdna.json)")
+	rootCmd.PersistentFlags().StringVarP(&token, "token", "t", "", "LogDNA Access Token for performing authenticated tasks")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// rootCmd.Flags().String("foo-bar", "", "Do The Foobar")
 }
 
-func initConfig() {
+func initConfig(cmd *cobra.Command) error {
+	home, err := homedir.Dir()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+
+	viper.SetEnvPrefix("logdna")
+	viper.BindEnv("config")
+	viper.BindEnv("token")
+	viper.AutomaticEnv()
+
+	viper.SetConfigName("logdna.json")
+	viper.SetConfigType("json")
+	viper.AddConfigPath(path.Join(home, ".config", "logdna"))
+	viper.AddConfigPath(path.Join("/etc/logdna/"))
+	viper.AddConfigPath(path.Join("."))
+
+	config := viper.GetString("config")
+
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
-	} else {
-		home, err := homedir.Dir()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+	} else if config != "" {
+		viper.SetConfigFile(config)
+	}
+
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return err
 		}
-
-		viper.SetConfigName("logdna.json")
-		viper.SetConfigType("json")
-		viper.AddConfigPath(path.Join(home, ".config", "logdna"))
-		viper.AddConfigPath(path.Join("/etc/logdna/"))
-		viper.AddConfigPath(path.Join("."))
 	}
 
-	viper.AutomaticEnv()
-	err := viper.ReadInConfig()
-
-	if err == nil {
-		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
-	} else {
-		fmt.Println(err)
-	}
+	viper.BindPFlag("config", cmd.PersistentFlags().Lookup("config"))
+	viper.BindPFlag("token", cmd.Flags().Lookup("token"))
+	token := viper.GetString("token")
+	fmt.Println("token", token)
+	return nil
 }

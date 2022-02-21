@@ -2,9 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"logdna/logging"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
+
+var sublog logging.Logger
 
 // fakeCmd represents the fake command
 var fakeCmd = &cobra.Command{
@@ -16,14 +20,19 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("fake called")
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		sublog = logger.Child("fake")
+	},
+
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Println(viper.GetString("token"))
+		sublog.Trace().Msg("fake")
+		return nil
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(fakeCmd)
-
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
