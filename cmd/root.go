@@ -7,9 +7,9 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 
 import (
 	"fmt"
-	"io"
+	"logdna/cmd/fake"
+	"logdna/cmd/ip"
 	"logdna/logging"
-	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -36,12 +36,7 @@ to quickly create a Cobra application.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-		resp, err := http.Get("http://ip.jsontest.com")
-		if err != nil {
-		}
-		defer resp.Body.Close()
-		body, err := io.ReadAll(resp.Body)
-		fmt.Println(string(body))
+		cmd.HelpFunc()(cmd, args)
 	},
 }
 
@@ -50,28 +45,52 @@ to quickly create a Cobra application.`,
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
+		fmt.Println(err)
 		os.Exit(1)
 	}
 }
 
 func init() {
-	initConfig(rootCmd)
-	logger = logging.New("debug", "logdna")
+	err := initConfig()
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
-	logger.Debug().Msg("This is a test")
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/logdna.json)")
-	rootCmd.PersistentFlags().StringVarP(&token, "token", "t", "", "LogDNA Access Token for performing authenticated tasks")
+	lvl := "error"
+	var debug bool = viper.GetBool("debug")
+
+	if debug {
+		lvl = "debug"
+	}
+
+	logger = logging.New(lvl, "logdna")
+	logger.Print("Debug logging enabled")
+
+	rootCmd.PersistentFlags().StringVar(
+		&cfgFile,
+		"config",
+		"",
+		"config file (default is $HOME/.config/logdna.json)",
+	)
+	rootCmd.PersistentFlags().StringVarP(
+		&token,
+		"token",
+		"t",
+		"",
+		"LogDNA Access Token for performing authenticated tasks",
+	)
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	// rootCmd.Flags().String("foo-bar", "", "Do The Foobar")
+
+	ip.Attach(rootCmd, logger)
+	fake.Attach(rootCmd, logger)
 }
 
-func initConfig(cmd *cobra.Command) error {
+func initConfig() error {
 	home, err := homedir.Dir()
 	if err != nil {
 		fmt.Println(err)
@@ -83,6 +102,8 @@ func initConfig(cmd *cobra.Command) error {
 	viper.SetEnvPrefix("logdna")
 	viper.BindEnv("config")
 	viper.BindEnv("token")
+	viper.BindEnv("debug")
+
 	viper.AutomaticEnv()
 
 	viper.SetConfigName("logdna.json")
@@ -105,9 +126,7 @@ func initConfig(cmd *cobra.Command) error {
 		}
 	}
 
-	viper.BindPFlag("config", cmd.PersistentFlags().Lookup("config"))
-	viper.BindPFlag("token", cmd.Flags().Lookup("token"))
-	token := viper.GetString("token")
-	fmt.Println("token", token)
+	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
+	viper.BindPFlag("token", rootCmd.Flags().Lookup("token"))
 	return nil
 }
