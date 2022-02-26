@@ -10,7 +10,7 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
-    binary: "logdna-{{ .Version }}-{{ .Arch }}"
+    binary: "logdna"
     id: "logdna"
     goos:
       - linux
@@ -36,7 +36,7 @@ nfpms:
     - rpm
 archives:
   - 
-    format: binary
+    format: tar.gz
     replacements:
       darwin: Darwin
       linux: Linux
