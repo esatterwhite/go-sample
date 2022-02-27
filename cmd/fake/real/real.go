@@ -1,17 +1,22 @@
 package fake
 
 import (
-	foobar "logdna/cmd/fake/real"
+	"fmt"
 	"logdna/logging"
 
 	"github.com/spf13/cobra"
 )
 
+// RealCommand Internal cobra wrapper
+type RealCommand struct {
+	cobra.Command
+}
+
 var sublog logging.Logger = logging.Default
 
-// fakeCmd represents the fake command
-var fakeCmd = &cobra.Command{
-	Use:   "fake",
+// The real command is a subcommand of fake
+var realCmd = &cobra.Command{
+	Use:   "real",
 	Short: "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
@@ -19,18 +24,14 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-	},
 
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		sublog.Print("cmd run: %s %s", cmd.Parent().Use, cmd.Use)
-		return nil
 	},
 }
 
-// Attach the main ip command to a parent cobra command
-func Attach(cmd *cobra.Command, logger logging.Logger) {
-	sublog = logger.Child("fake")
-	foobar.Attach(fakeCmd, sublog)
-	cmd.AddCommand(fakeCmd)
+// Attach to parent
+func Attach(parent *cobra.Command, logger logging.Logger) {
+	sublog = logger.Child(fmt.Sprintf("%s real", parent.Use))
+	parent.AddCommand(realCmd)
 }
